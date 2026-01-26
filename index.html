@@ -139,45 +139,77 @@
 
     <!-- CUSTOMER RECEIPT VIEW -->
     <div id="receipt-view" class="max-w-md mx-auto py-10 px-4">
-        <div class="bg-white rounded-lg shadow-xl p-8 mono text-slate-800 border-t-8 border-emerald-600">
-            <div class="text-center mb-6">
-                <h2 class="text-xl font-bold">ASENCIO DESIGNS</h2>
-                <p class="text-sm">3D PRINT COST RECEIPT</p>
-                <p class="text-xs">----------------------------------</p>
+        <div class="card shadow-2xl rounded-3xl p-8 border border-emerald-100 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-emerald-600"></div>
+            
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight">ASENCIO DESIGNS</h2>
+                <p class="text-emerald-600 font-bold text-sm uppercase tracking-widest mt-1">3D Print Receipt</p>
             </div>
             
-            <div class="space-y-1 text-sm mb-6">
-                <div class="flex justify-between"><span>Date:</span> <span id="r-date"></span></div>
-                <div class="flex justify-between"><span>Print Mode:</span> <span id="r-mode"></span></div>
-                <div class="flex justify-between"><span id="r-mat-label">Filament:</span> <span id="r-selection"></span></div>
-                <div class="flex justify-between"><span>Usage:</span> <span id="r-usage"></span></div>
-                <div class="flex justify-between"><span>Duration:</span> <span id="r-time"></span></div>
-            </div>
-
-            <div class="mb-6">
-                <p class="text-xs">----------------------------------</p>
-                <p class="text-sm font-bold mb-2">COST BREAKDOWN</p>
-                <div class="space-y-1 text-sm">
-                    <div class="flex justify-between"><span>Material Cost:</span> <span id="r-mat-cost"></span></div>
-                    <div class="flex justify-between"><span>Electricity Cost*:</span> <span id="r-elec-cost"></span></div>
-                    <div id="r-maint-row" class="hidden flex justify-between"><span>Maint. Cost:</span> <span id="r-maint-cost"></span></div>
-                    <div id="r-hazmat-row" class="hidden flex justify-between"><span>Hazmat Fee:</span> <span>$10.00</span></div>
-                    <div class="flex justify-between"><span>Process Fee:</span> <span id="r-process-fee"></span></div>
+            <div class="space-y-4 mb-8">
+                <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Date</span>
+                    <span id="r-date" class="text-sm font-semibold text-slate-700"></span>
+                </div>
+                <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Mode</span>
+                    <span id="r-mode" class="text-sm font-semibold text-slate-700"></span>
+                </div>
+                <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <span id="r-mat-label" class="text-xs font-bold text-slate-400 uppercase">Filament</span>
+                    <span id="r-selection" class="text-sm font-semibold text-slate-700"></span>
+                </div>
+                <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Usage</span>
+                    <span id="r-usage" class="text-sm font-semibold text-slate-700"></span>
+                </div>
+                <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Duration</span>
+                    <span id="r-time" class="text-sm font-semibold text-slate-700"></span>
                 </div>
             </div>
 
-            <div class="mb-6">
-                <p class="text-xs">----------------------------------</p>
-                <div class="flex justify-between items-center py-2">
-                    <span class="font-bold text-lg">Total:</span>
-                    <span id="r-total" class="font-bold text-2xl text-emerald-700"></span>
+            <div class="bg-slate-50 rounded-2xl p-5 mb-8">
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Cost Breakdown</h4>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Material Cost</span>
+                        <span id="r-mat-cost" class="font-bold text-slate-700"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Electricity Cost*</span>
+                        <span id="r-elec-cost" class="font-bold text-slate-700"></span>
+                    </div>
+                    <div id="r-maint-row" class="hidden flex justify-between text-sm">
+                        <span class="text-slate-500">Maint. Cost</span>
+                        <span id="r-maint-cost" class="font-bold text-slate-700"></span>
+                    </div>
+                    <div id="r-hazmat-row" class="hidden flex justify-between text-sm">
+                        <span class="text-slate-500">Hazmat Fee</span>
+                        <span class="font-bold text-slate-700">$10.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Process Fee</span>
+                        <span id="r-process-fee" class="font-bold text-slate-700"></span>
+                    </div>
                 </div>
-                <p class="text-xs">----------------------------------</p>
             </div>
 
-            <div class="text-[10px] leading-tight space-y-4 text-center text-slate-500">
-                <p>*Rates based off TECO 2026 electrical charges: $0.15897 per kWh and subjected to change*</p>
-                <p class="font-bold text-slate-800">Thank you for choosing Asencio Designs for your custom fabrication needs!</p>
+            <div class="flex justify-between items-center mb-8 px-2">
+                <span class="text-lg font-black text-slate-900 uppercase tracking-tighter">Total Amount</span>
+                <span id="r-total" class="text-3xl font-black text-emerald-600"></span>
+            </div>
+
+            <div class="text-center space-y-4">
+                <p class="text-[10px] text-slate-400 leading-relaxed italic px-4">
+                    *Rates based off TECO 2026 electrical charges: $0.15897 per kWh and subjected to change*
+                </p>
+                <div class="pt-4 border-t border-slate-100">
+                    <p class="text-sm font-bold text-slate-800 leading-snug">
+                        Thank you for choosing Asencio Designs<br>for your custom fabrication needs!
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -326,7 +358,7 @@
                     document.getElementById('r-elec-cost').innerText = data.el;
                     document.getElementById('r-process-fee').innerText = data.mk;
                     document.getElementById('r-total').innerText = data.p;
-                    document.getElementById('r-mat-label').innerText = data.m === 'FDM' ? 'Filament:' : 'Resin/Printer:';
+                    document.getElementById('r-mat-label').innerText = data.m === 'FDM' ? 'Filament' : 'Resin/Printer';
                     if (data.hz) {
                         document.getElementById('r-maint-row').classList.remove('hidden');
                         document.getElementById('r-hazmat-row').classList.remove('hidden');
