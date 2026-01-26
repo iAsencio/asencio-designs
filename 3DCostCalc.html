@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tampa 3D Print Cost Calculator (Bambu P1S & Elegoo SLA)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library for QR Code generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .mode-active {
+            border-color: #10b981;
+            background-color: #ecfdf5;
+            color: #065f46;
+        }
+        /* Hide app when viewing receipt */
+        .view-receipt #app-interface { display: none; }
+        #receipt-view { display: none; }
+        .view-receipt #receipt-view { display: block; }
+
+        /* Modal Styles */
+        #qrModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+        }
+        #qrModal.active { display: flex; }
+    </style>
+</head>
+<body class="bg-emerald-50 min-h-screen p-4 md:p-8 text-slate-800">
+
+    <!-- APP INTERFACE -->
+    <div id="app-interface" class="max-w-2xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-slate-900 mb-2">3D Print Price Calculator</h1>
+            <p class="text-emerald-700 font-medium">Asencio Designs | Adjusted for 2026 TECO Rates</p>
+        </header>
+
+        <!-- Mode Toggle -->
+        <div class="flex gap-2 mb-6">
+            <button id="fdmToggle" onclick="setMode('fdm')" class="flex-1 py-3 rounded-xl border-2 font-bold transition-all mode-active">FDM (Bambu P1S)</button>
+            <button id="slaToggle" onclick="setMode('sla')" class="flex-1 py-3 rounded-xl border-2 font-bold transition-all border-slate-200 bg-white hover:border-emerald-200">SLA (Elegoo Resin)</button>
+        </div>
+
+        <div class="card shadow-xl rounded-2xl p-6 md:p-8 border border-emerald-100">
+            
+            <!-- Material/Printer Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label id="materialLabel" class="block text-sm font-semibold mb-2">Filament Type</label>
+                    <select id="materialType" onchange="updatePresets()" class="w-full p-3 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Power Draw (Watts)</label>
+                    <input type="number" id="wattage" value="100" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors">
+                </div>
+            </div>
+
+            <!-- Weight and Spool/Bottle Cost -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label id="usageLabel" class="block text-sm font-semibold mb-2">Weight/Volume Used (g/ml)</label>
+                    <input type="number" id="grams" placeholder="e.g. 150" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label id="containerCostLabel" class="block text-sm font-semibold mb-2">Cost of Spool ($)</label>
+                    <input type="number" id="spoolCost" value="20" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                </div>
+            </div>
+
+            <!-- Print Duration and Markup -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div>
+                    <label id="containerSizeLabel" class="block text-sm font-semibold mb-2">Total Spool (kg)</label>
+                    <input type="number" id="spoolWeight" value="1" step="0.1" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Print Time (Hrs)</label>
+                    <input type="number" id="hours" placeholder="e.g. 5" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Markup (%)</label>
+                    <input type="number" id="markup" value="50" class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-emerald-50/30">
+                </div>
+            </div>
+
+            <!-- FDM Specific: Post Processing -->
+            <div id="fdmOptions" class="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                <label class="flex items-center cursor-pointer select-none">
+                    <input type="checkbox" id="postProcessing" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 mr-3">
+                    <div>
+                        <span class="text-sm font-bold text-emerald-900">Post-Processing Service</span>
+                        <p class="text-[10px] text-emerald-700">Adds a flat $2.00 fee for cleaning and support removal.</p>
+                    </div>
+                </label>
+            </div>
+
+            <!-- SLA Specific: Screen Maintenance & Hazmat -->
+            <div id="slaMaintenance" class="hidden mb-8 p-4 bg-orange-50 border border-orange-100 rounded-xl">
+                <h3 class="text-xs font-bold text-orange-700 uppercase tracking-widest mb-3">SLA Maintenance & Hazmat</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-orange-600 mb-1">SCREEN COST ($)</label>
+                        <input type="number" id="screenCost" value="115" class="w-full p-2 text-sm border rounded bg-white border-orange-200">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-orange-600 mb-1">SCREEN LIFE (HRS)</label>
+                        <input type="number" id="screenLife" value="2000" class="w-full p-2 text-sm border rounded bg-white border-orange-200">
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-orange-200">
+                    <p class="text-[10px] font-bold text-orange-700 uppercase">Flat Hazmat Fee: <span class="text-orange-900">$10.00 Applied</span></p>
+                </div>
+            </div>
+
+            <!-- Result Section -->
+            <div class="space-y-4">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                    <div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Total Production Cost</div>
+                    <div id="totalCost" class="text-2xl font-bold text-slate-700">$0.00</div>
+                    
+                    <div id="breakdownGrid" class="mt-2 grid grid-cols-4 gap-2 text-[10px] pt-2 border-t border-slate-200">
+                        <div class="text-slate-500">Material: <span id="matCostBreakdown" class="font-medium text-emerald-700 block">$0.00</span></div>
+                        <div class="text-slate-500">Elec*: <span id="elecCostBreakdown" class="font-medium text-slate-700 block">$0.00</span></div>
+                        <div id="maintCol" class="text-slate-500 hidden">Maint: <span id="maintCostBreakdown" class="font-medium text-slate-700 block">$0.00</span></div>
+                        <div id="hazmatCol" class="text-slate-500 hidden">Hazmat: <span class="font-medium text-orange-700 block">$10.00</span></div>
+                        <div id="postProcessCol" class="text-slate-500 hidden">Post-Proc: <span class="font-medium text-emerald-700 block">$2.00</span></div>
+                        <div class="text-slate-500">Markup: <span id="processFeeBreakdown" class="font-medium text-slate-700 block">$0.00</span></div>
+                    </div>
+                </div>
+
+                <div class="bg-emerald-600 rounded-xl p-6 text-center text-white shadow-lg relative group">
+                    <div class="text-sm uppercase tracking-wider font-bold mb-1 opacity-80">Suggested Sale Price</div>
+                    <div id="salePrice" class="text-5xl font-black">$0.00</div>
+                    <div id="profitLabel" class="mt-2 text-xs opacity-90 italic">Calculated with process fee</div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button onclick="exportReceipt()" class="py-4 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 transition-colors flex flex-col items-center justify-center gap-1 shadow-md text-[10px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        FILE (.TXT)
+                    </button>
+                    <button onclick="generateShareLink()" class="py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-colors flex flex-col items-center justify-center gap-1 shadow-md text-[10px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                        COPY LINK
+                    </button>
+                    <button onclick="showQRCode()" class="py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-colors flex flex-col items-center justify-center gap-1 shadow-md text-[10px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
+                        SHOW QR
+                    </button>
+                    <button onclick="saveSettings()" class="py-4 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors flex flex-col items-center justify-center gap-1 shadow-md text-[10px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        DEFAULTS
+                    </button>
+                </div>
+                <div id="saveToast" class="hidden text-center text-[10px] text-emerald-600 font-bold animate-pulse uppercase tracking-widest">Success!</div>
+            </div>
+
+            <!-- Rate Info Disclaimer -->
+            <div class="mt-6 p-4 bg-emerald-50 rounded-lg border border-emerald-100 text-[10px] text-emerald-600 leading-relaxed">
+                <strong>TECO 2026 Rate Calculation (Tampa, FL):</strong> $0.15897 per kWh. 
+                <span id="formulaNote">Includes machine overhead and processing averages.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR MODAL -->
+    <div id="qrModal" onclick="closeQRModal()">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-sm mx-4" onclick="event.stopPropagation()">
+            <h3 class="text-xl font-black text-slate-800 mb-2">Scan for Receipt</h3>
+            <p class="text-xs text-slate-500 mb-4 font-medium">Point your camera at the code below.</p>
+            
+            <div id="qrcode" class="flex justify-center bg-white p-4 border border-slate-100 rounded-2xl mb-4"></div>
+            
+            <!-- Technical Debug Info (Helps troubleshoot connection) -->
+            <div class="text-[10px] text-slate-400 bg-slate-50 p-2 rounded mb-4 break-all overflow-hidden text-left">
+                <span class="font-bold text-slate-500 uppercase">Current Address:</span><br>
+                <span id="qrUrlDebug"></span>
+            </div>
+
+            <div id="localWarning" class="hidden text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded mb-4">
+                ⚠ WARNING: You are running this locally. This QR code will NOT work on other devices unless hosted on the internet (like GitHub Pages).
+            </div>
+
+            <button onclick="closeQRModal()" class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-900 transition-all">Close</button>
+        </div>
+    </div>
+
+    <!-- CUSTOMER RECEIPT VIEW -->
+    <div id="receipt-view" class="max-w-md mx-auto py-10 px-4">
+        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-emerald-100">
+            <div class="bg-emerald-600 p-8 text-white text-center">
+                <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-black uppercase tracking-tighter text-white">Asencio Designs</h2>
+                <p class="text-emerald-100 text-xs font-bold mt-1">Order Invoice & Receipt</p>
+            </div>
+            
+            <div class="p-8 space-y-6">
+                <div class="flex justify-between items-end border-b border-slate-100 pb-4">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</p>
+                        <p id="r-date" class="font-bold text-slate-700">--</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</p>
+                        <p id="r-mode" class="font-bold text-emerald-600">--</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500 font-medium">Material/Hardware</span>
+                        <span id="r-selection" class="font-bold text-slate-800">--</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500 font-medium">Usage Amount</span>
+                        <span id="r-usage" class="font-bold text-slate-800">--</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500 font-medium">Processing Time</span>
+                        <span id="r-time" class="font-bold text-slate-800">--</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 rounded-2xl p-6 space-y-2">
+                    <div class="flex justify-between text-[10px] tracking-tight">
+                        <span class="text-slate-400 font-bold uppercase">Item Total</span>
+                        <span id="r-item-total" class="text-slate-600 font-bold">--</span>
+                    </div>
+                    <div class="flex justify-between text-[10px] tracking-tight">
+                        <span class="text-slate-400 font-bold uppercase">Processing & Labor</span>
+                        <span id="r-labor" class="text-slate-600 font-bold">--</span>
+                    </div>
+                    <div id="r-hazmat-row" class="hidden flex justify-between text-[10px] tracking-tight">
+                        <span class="text-orange-400 font-bold uppercase">Hazmat Handling</span>
+                        <span class="text-orange-600 font-bold">$10.00</span>
+                    </div>
+                    <div class="border-t border-slate-200 mt-4 pt-4 flex justify-between items-center">
+                        <span class="text-slate-800 font-black text-lg">TOTAL DUE</span>
+                        <span id="r-total" class="text-emerald-600 font-black text-2xl">--</span>
+                    </div>
+                </div>
+
+                <div class="text-center pt-2">
+                    <p class="text-[10px] text-slate-400 italic font-medium leading-relaxed px-4">Thank you for choosing Asencio Designs for your custom fabrication needs!</p>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-6">
+            <button onclick="window.location.search = ''" class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest hover:underline transition-all">Return to Calculator</button>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'fdm';
+
+        const RATES = {
+            energy: 9.569, fuel: 3.210, stormProtection: 0.717, cleanEnergy: 0.406, stormSurcharge: 1.995
+        };
+        const TOTAL_KWH_RATE = (Object.values(RATES).reduce((a, b) => a + b, 0)) / 100;
+
+        const PRESETS = {
+            fdm: [
+                { name: 'PLA', watts: 95 },
+                { name: 'PETG', watts: 95 },
+                { name: 'ABS/ASA', watts: 240 },
+                { name: 'Custom Power Draw', watts: 100, custom: true }
+            ],
+            sla: [
+                { name: 'Elegoo Saturn 4 Ultra', watts: 144 },
+                { name: 'Elegoo Saturn 3 Ultra', watts: 180 },
+                { name: 'Elegoo Mars 4 Max', watts: 72 },
+                { name: 'Custom Power Draw', watts: 120, custom: true }
+            ]
+        };
+
+        function setMode(mode) {
+            currentMode = mode;
+            const fdmBtn = document.getElementById('fdmToggle');
+            const slaBtn = document.getElementById('slaToggle');
+            const fdmOptions = document.getElementById('fdmOptions');
+            const maintSection = document.getElementById('slaMaintenance');
+            
+            const maintCol = document.getElementById('maintCol');
+            const hazmatCol = document.getElementById('hazmatCol');
+            const postProcessCol = document.getElementById('postProcessCol');
+            const breakdownGrid = document.getElementById('breakdownGrid');
+            
+            if (mode === 'fdm') {
+                fdmBtn.className = "flex-1 py-3 rounded-xl border-2 font-bold transition-all mode-active";
+                slaBtn.className = "flex-1 py-3 rounded-xl border-2 font-bold transition-all border-slate-200 bg-white hover:border-emerald-200";
+                fdmOptions.classList.remove('hidden');
+                maintSection.classList.add('hidden');
+                maintCol.classList.add('hidden');
+                hazmatCol.classList.add('hidden');
+                breakdownGrid.className = "mt-2 grid grid-cols-4 gap-2 text-[10px] pt-2 border-t border-slate-200";
+                document.getElementById('materialLabel').innerText = "Filament Type";
+                document.getElementById('containerCostLabel').innerText = "Cost of Spool ($)";
+                document.getElementById('containerSizeLabel').innerText = "Spool Weight (kg)";
+            } else {
+                slaBtn.className = "flex-1 py-3 rounded-xl border-2 font-bold transition-all mode-active";
+                fdmBtn.className = "flex-1 py-3 rounded-xl border-2 font-bold transition-all border-slate-200 bg-white hover:border-emerald-200";
+                fdmOptions.classList.add('hidden');
+                maintSection.classList.remove('hidden');
+                maintCol.classList.remove('hidden');
+                hazmatCol.classList.remove('hidden');
+                postProcessCol.classList.add('hidden');
+                breakdownGrid.className = "mt-2 grid grid-cols-5 gap-2 text-[10px] pt-2 border-t border-slate-200";
+                document.getElementById('materialLabel').innerText = "Printer Model";
+                document.getElementById('containerCostLabel').innerText = "Cost of Bottle ($)";
+                document.getElementById('containerSizeLabel').innerText = "Bottle Size (kg/L)";
+            }
+            populateMaterials();
+            loadSettings();
+            calculate();
+        }
+
+        function populateMaterials() {
+            const select = document.getElementById('materialType');
+            select.innerHTML = '';
+            PRESETS[currentMode].forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.watts;
+                opt.innerText = p.name;
+                if (p.custom) opt.setAttribute('data-custom', 'true');
+                select.appendChild(opt);
+            });
+            updatePresets();
+        }
+
+        function updatePresets() {
+            const select = document.getElementById('materialType');
+            const selectedOption = select.options[select.selectedIndex];
+            const wattageInput = document.getElementById('wattage');
+            if (!selectedOption.hasAttribute('data-custom')) {
+                wattageInput.value = selectedOption.value;
+                wattageInput.disabled = true;
+                wattageInput.classList.add('bg-slate-50', 'text-slate-400');
+            } else {
+                wattageInput.disabled = false;
+                wattageInput.classList.remove('bg-slate-50', 'text-slate-400');
+            }
+            calculate();
+        }
+
+        function calculate() {
+            const grams = parseFloat(document.getElementById('grams').value) || 0;
+            const spoolCost = parseFloat(document.getElementById('spoolCost').value) || 0;
+            const spoolWeightKg = parseFloat(document.getElementById('spoolWeight').value) || 1;
+            const hours = parseFloat(document.getElementById('hours').value) || 0;
+            const wattage = parseFloat(document.getElementById('wattage').value) || 0;
+            const markupPercent = parseFloat(document.getElementById('markup').value) || 0;
+
+            const gramsInSpool = spoolWeightKg * 1000;
+            const materialCost = (grams / gramsInSpool) * spoolCost;
+            const kwhUsed = (wattage / 1000) * hours;
+            const electricityCost = kwhUsed * TOTAL_KWH_RATE;
+
+            let extraProductionCost = 0;
+            let maintenanceCost = 0;
+
+            if (currentMode === 'sla') {
+                const screenCost = parseFloat(document.getElementById('screenCost').value) || 0;
+                const screenLife = parseFloat(document.getElementById('screenLife').value) || 1;
+                maintenanceCost = (screenCost / screenLife) * hours;
+                extraProductionCost = 10.00;
+            } else {
+                const isPostProcessing = document.getElementById('postProcessing').checked;
+                if (isPostProcessing) extraProductionCost = 2.00;
+            }
+
+            const totalProductionCost = materialCost + electricityCost + maintenanceCost + extraProductionCost;
+            const markupAmount = (totalProductionCost - extraProductionCost) * (markupPercent / 100);
+            const finalSalePrice = totalProductionCost + markupAmount;
+
+            document.getElementById('totalCost').innerText = '$' + totalProductionCost.toFixed(2);
+            document.getElementById('matCostBreakdown').innerText = '$' + materialCost.toFixed(2);
+            document.getElementById('elecCostBreakdown').innerText = '$' + electricityCost.toFixed(2);
+            document.getElementById('maintCostBreakdown').innerText = '$' + maintenanceCost.toFixed(2);
+            document.getElementById('processFeeBreakdown').innerText = '$' + markupAmount.toFixed(2);
+            document.getElementById('salePrice').innerText = '$' + finalSalePrice.toFixed(2);
+        }
+
+        function saveSettings() {
+            const settings = {
+                spoolCost: document.getElementById('spoolCost').value,
+                spoolWeight: document.getElementById('spoolWeight').value,
+                markup: document.getElementById('markup').value,
+                screenCost: document.getElementById('screenCost').value,
+                screenLife: document.getElementById('screenLife').value
+            };
+            localStorage.setItem('asencio_settings_' + currentMode, JSON.stringify(settings));
+            showToast();
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('asencio_settings_' + currentMode);
+            if (saved) {
+                const settings = JSON.parse(saved);
+                if (settings.spoolCost) document.getElementById('spoolCost').value = settings.spoolCost;
+                if (settings.spoolWeight) document.getElementById('spoolWeight').value = settings.spoolWeight;
+                if (settings.markup) document.getElementById('markup').value = settings.markup;
+                if (settings.screenCost) document.getElementById('screenCost').value = settings.screenCost;
+                if (settings.screenLife) document.getElementById('screenLife').value = settings.screenLife;
+            }
+        }
+
+        function getFullShareUrl() {
+            const modeName = currentMode.toUpperCase();
+            const selection = document.getElementById('materialType').options[document.getElementById('materialType').selectedIndex].text;
+            const grams = document.getElementById('grams').value || 0;
+            const hours = document.getElementById('hours').value || 0;
+            const salePrice = document.getElementById('salePrice').innerText;
+            const date = new Date().toLocaleDateString();
+            const matCost = document.getElementById('matCostBreakdown').innerText;
+            const markup = document.getElementById('processFeeBreakdown').innerText;
+            const elec = document.getElementById('elecCostBreakdown').innerText;
+            const maint = document.getElementById('maintCostBreakdown').innerText;
+            
+            const data = {
+                m: modeName, s: selection, g: grams + (currentMode === 'fdm' ? 'g' : 'ml'),
+                h: hours + 'hrs', p: salePrice, d: date, mt: matCost, mk: markup,
+                el: elec, mn: maint, hz: currentMode === 'sla'
+            };
+
+            const encoded = btoa(JSON.stringify(data));
+            // Use window.location.href to ensure we have the absolute path
+            let base = window.location.href.split('?')[0];
+            return base + "?r=" + encoded;
+        }
+
+        function generateShareLink() {
+            const shareUrl = getFullShareUrl();
+            const el = document.createElement('textarea');
+            el.value = shareUrl;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast();
+        }
+
+        function showQRCode() {
+            const shareUrl = getFullShareUrl();
+            const qrContainer = document.getElementById('qrcode');
+            const debugEl = document.getElementById('qrUrlDebug');
+            const warningEl = document.getElementById('localWarning');
+            
+            qrContainer.innerHTML = '';
+            debugEl.innerText = shareUrl;
+            
+            // Show warning if address is a local/preview address
+            const isLocal = shareUrl.includes('localhost') || 
+                            shareUrl.includes('127.0.0.1') || 
+                            shareUrl.includes('file://') ||
+                            shareUrl.includes('content-proxy');
+            
+            if (isLocal) {
+                warningEl.classList.remove('hidden');
+            } else {
+                warningEl.classList.add('hidden');
+            }
+            
+            new QRCode(qrContainer, {
+                text: shareUrl,
+                width: 200,
+                height: 200,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.L
+            });
+
+            document.getElementById('qrModal').classList.add('active');
+        }
+
+        function closeQRModal() {
+            document.getElementById('qrModal').classList.remove('active');
+        }
+
+        function checkReceiptMode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rData = urlParams.get('r');
+            if (rData) {
+                try {
+                    const data = JSON.parse(atob(rData));
+                    document.body.classList.add('view-receipt');
+                    document.getElementById('r-date').innerText = data.d;
+                    document.getElementById('r-mode').innerText = data.m;
+                    document.getElementById('r-selection').innerText = data.s;
+                    document.getElementById('r-usage').innerText = data.g;
+                    document.getElementById('r-time').innerText = data.h;
+                    document.getElementById('r-item-total').innerText = data.mt;
+                    const laborValue = parseFloat(data.mk.replace('$','')) + parseFloat(data.el.replace('$','')) + parseFloat(data.mn.replace('$',''));
+                    document.getElementById('r-labor').innerText = '$' + laborValue.toFixed(2);
+                    document.getElementById('r-total').innerText = data.p;
+                    if (data.hz) document.getElementById('r-hazmat-row').classList.remove('hidden');
+                } catch(e) { console.error("Invalid receipt data"); }
+            }
+        }
+
+        function showToast() {
+            const toast = document.getElementById('saveToast');
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 2000);
+        }
+
+        function exportReceipt() {
+            const mode = currentMode.toUpperCase();
+            const date = new Date().toLocaleString();
+            const selection = document.getElementById('materialType').options[document.getElementById('materialType').selectedIndex].text;
+            const grams = document.getElementById('grams').value || 0;
+            const salePrice = document.getElementById('salePrice').innerText;
+            let receipt = `ASENCIO DESIGNS - RECEIPT\nDate: ${date}\nMode: ${mode}\nMaterial: ${selection}\nUsage: ${grams}\nTotal: ${salePrice}`;
+            const blob = new Blob([receipt], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Receipt_${Date.now()}.txt`;
+            a.click();
+        }
+
+        const inputs = ['grams', 'spoolCost', 'spoolWeight', 'hours', 'wattage', 'markup', 'screenCost', 'screenLife', 'postProcessing'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', calculate);
+                if (el.type === 'checkbox') el.addEventListener('change', calculate);
+            }
+        });
+
+        window.onload = () => {
+            checkReceiptMode();
+            populateMaterials();
+            setMode('fdm');
+        };
+    </script>
+</body>
+</html>
