@@ -189,6 +189,10 @@
                             <span class="text-slate-500">Hazmat Fee</span>
                             <span class="font-bold text-slate-700">$10.00</span>
                         </div>
+                        <div id="r-postproc-row" class="hidden flex justify-between text-sm">
+                            <span class="text-slate-500">Post-Process Fee</span>
+                            <span class="font-bold text-slate-700">$2.00</span>
+                        </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-slate-500">Process Fee</span>
                             <span id="r-process-fee" class="font-bold text-slate-700"></span>
@@ -308,11 +312,14 @@
             
             let extra = 0;
             let mn = 0;
+            let hasPostProc = false;
+            
             if (currentMode === 'sla') {
                 mn = (parseFloat(document.getElementById('screenCost').value) / parseFloat(document.getElementById('screenLife').value)) * parseFloat(hours);
                 extra = 10;
             } else if (document.getElementById('postProcessing').checked) {
                 extra = 2;
+                hasPostProc = true;
             }
 
             const prod = matCost + elecCost + mn + extra;
@@ -321,7 +328,8 @@
             const data = {
                 m: currentMode.toUpperCase(), s: selection, g: grams + (currentMode === 'fdm' ? 'g' : 'ml'),
                 h: hours + 'hrs', p: salePrice, d: date, mt: '$' + matCost.toFixed(2), 
-                el: '$' + elecCost.toFixed(2), mk: '$' + mk.toFixed(2), mn: '$' + mn.toFixed(2), hz: currentMode === 'sla'
+                el: '$' + elecCost.toFixed(2), mk: '$' + mk.toFixed(2), mn: '$' + mn.toFixed(2), 
+                hz: currentMode === 'sla', pp: hasPostProc
             };
 
             const encoded = btoa(JSON.stringify(data));
@@ -360,10 +368,14 @@
                     document.getElementById('r-process-fee').innerText = data.mk;
                     document.getElementById('r-total').innerText = data.p;
                     document.getElementById('r-mat-label').innerText = data.m === 'FDM' ? 'Filament' : 'Resin/Printer';
+                    
                     if (data.hz) {
                         document.getElementById('r-maint-row').classList.remove('hidden');
                         document.getElementById('r-hazmat-row').classList.remove('hidden');
                         document.getElementById('r-maint-cost').innerText = data.mn;
+                    }
+                    if (data.pp) {
+                        document.getElementById('r-postproc-row').classList.remove('hidden');
                     }
                 } catch(e) { console.error("Receipt error", e); }
             }
