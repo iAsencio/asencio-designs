@@ -23,9 +23,10 @@
             color: #581c87;
         }
         
-        .view-receipt #app-interface { display: none; }
+        /* Navigation Logic */
         #receipt-view { display: none; }
-        .view-receipt #receipt-view { display: block; }
+        body.view-receipt #app-interface { display: none; }
+        body.view-receipt #receipt-view { display: block; }
 
         #qrModal {
             display: none;
@@ -90,7 +91,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-2">Markup (%)</label>
-                    <input type="number" id="markup" value="50" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-emerald-50/30" id="markupInput">
+                    <input type="number" id="markup" value="50" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-emerald-50/30">
                 </div>
             </div>
 
@@ -101,7 +102,6 @@
                 </label>
             </div>
 
-            <!-- SLA Maintenance and Custom Pricing -->
             <div id="slaOptions" class="hidden mb-6 space-y-4">
                 <div class="p-4 bg-purple-50 border border-purple-100 rounded-xl">
                     <div class="grid grid-cols-2 gap-4">
@@ -203,12 +203,10 @@
                             <span class="text-slate-500">Post-Process Fee</span>
                             <span class="font-bold text-slate-700">$2.00</span>
                         </div>
-                        <!-- Combined Field for SLA: Painting + Processing + Maintenance -->
                         <div id="r-sla-custom-row" class="hidden flex justify-between text-sm">
                             <span class="text-slate-500">Custom Painting / Processing</span>
                             <span id="r-sla-custom-total" class="font-bold text-slate-700"></span>
                         </div>
-                        <!-- Standard FDM Process Fee -->
                         <div id="r-fdm-process-row" class="hidden flex justify-between text-sm">
                             <span class="text-slate-500">Process Fee</span>
                             <span id="r-fdm-process-fee" class="font-bold text-slate-700"></span>
@@ -247,15 +245,12 @@
         function setMode(mode) {
             currentMode = mode;
             
-            // Buttons
             document.getElementById('fdmToggle').className = mode === 'fdm' ? "flex-1 py-3 rounded-xl border-2 font-bold transition-all mode-active" : "flex-1 py-3 rounded-xl border-2 font-bold transition-all border-slate-200 bg-white hover:border-emerald-200";
             document.getElementById('slaToggle').className = mode === 'sla' ? "flex-1 py-3 rounded-xl border-2 font-bold transition-all mode-active-sla" : "flex-1 py-3 rounded-xl border-2 font-bold transition-all border-slate-200 bg-white hover:border-purple-200";
             
-            // Panels
             document.getElementById('fdmOptions').classList.toggle('hidden', mode === 'sla');
             document.getElementById('slaOptions').classList.toggle('hidden', mode === 'fdm');
             
-            // App Colors & Headers
             const mainBody = document.getElementById('mainBody');
             const mainHeader = document.getElementById('mainHeader');
             const subHeader = document.getElementById('subHeader');
@@ -436,17 +431,15 @@
                         document.getElementById('receiptBrand').innerText = brandName;
                         document.getElementById('r-final-brand').innerText = brandName;
                         
-                        // Purple Theme
-                        document.body.className = "bg-purple-100 min-h-screen p-4 md:p-8 text-slate-800";
-                        receiptBanner.className = "bg-purple-700 text-white text-center py-8 transition-colors";
-                        receiptCard.className = "card shadow-2xl rounded-3xl border border-purple-100 relative overflow-hidden transition-all";
-                        breakdownCard.className = "bg-purple-50 rounded-2xl p-5 mb-8 transition-colors";
-                        breakdownHeader.className = "text-[10px] font-black text-purple-400 uppercase tracking-widest mb-3 transition-colors";
-                        rTotal.className = "text-3xl font-black text-purple-700 transition-colors";
+                        document.body.className = "bg-purple-100 min-h-screen p-4 md:p-8 text-slate-800 view-receipt";
+                        receiptBanner.className = "bg-purple-700 text-white text-center py-8";
+                        receiptCard.className = "card shadow-2xl rounded-3xl border border-purple-100 relative overflow-hidden";
+                        breakdownCard.className = "bg-purple-50 rounded-2xl p-5 mb-8";
+                        breakdownHeader.className = "text-[10px] font-black text-purple-400 uppercase tracking-widest mb-3";
+                        rTotal.className = "text-3xl font-black text-purple-700";
 
                         document.getElementById('r-hazmat-row').classList.remove('hidden');
                         
-                        // Combine Maint (mn), Markup (mk), and Adjusted Price (adj)
                         const mnVal = parseFloat(data.mn.replace('$', '')) || 0;
                         const mkVal = parseFloat(data.mk.replace('$', '')) || 0;
                         const adjVal = parseFloat(data.adj) || 0;
@@ -461,13 +454,12 @@
                         document.getElementById('receiptBrand').innerText = brandName;
                         document.getElementById('r-final-brand').innerText = brandName;
                         
-                        // Green Theme
-                        document.body.className = "bg-emerald-50 min-h-screen p-4 md:p-8 text-slate-800";
-                        receiptBanner.className = "bg-emerald-600 text-white text-center py-8 transition-colors";
-                        receiptCard.className = "card shadow-2xl rounded-3xl border border-emerald-100 relative overflow-hidden transition-all";
-                        breakdownCard.className = "bg-slate-50 rounded-2xl p-5 mb-8 transition-colors";
-                        breakdownHeader.className = "text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 transition-colors";
-                        rTotal.className = "text-3xl font-black text-emerald-600 transition-colors";
+                        document.body.className = "bg-emerald-50 min-h-screen p-4 md:p-8 text-slate-800 view-receipt";
+                        receiptBanner.className = "bg-emerald-600 text-white text-center py-8";
+                        receiptCard.className = "card shadow-2xl rounded-3xl border border-emerald-100 relative overflow-hidden";
+                        breakdownCard.className = "bg-slate-50 rounded-2xl p-5 mb-8";
+                        breakdownHeader.className = "text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3";
+                        rTotal.className = "text-3xl font-black text-emerald-600";
 
                         document.getElementById('r-fdm-process-row').classList.remove('hidden');
                         document.getElementById('r-fdm-process-fee').innerText = data.mk;
@@ -486,8 +478,10 @@
                     document.getElementById('r-total').innerText = data.p;
                     document.getElementById('r-mat-label').innerText = data.m === 'FDM' ? 'Filament' : 'Resin/Printer';
                     
-                } catch(e) { console.error("Receipt error", e); }
+                    return true;
+                } catch(e) { console.error("Receipt error", e); return false; }
             }
+            return false;
         }
 
         function showToast() {
@@ -502,8 +496,11 @@
         });
 
         window.onload = () => {
-            checkReceiptMode();
-            if (!document.body.classList.contains('view-receipt')) {
+            // Check if we should be in receipt mode first
+            const isReceipt = checkReceiptMode();
+            
+            // If not a receipt, init the calculator
+            if (!isReceipt) {
                 setMode('fdm');
             }
         };
