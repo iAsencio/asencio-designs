@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asencio Designs | 3D Print Cost Calculator</title>
+    <title>3D Print Cost Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
@@ -40,8 +40,8 @@
     <!-- APP INTERFACE (Calculator) -->
     <div id="app-interface" class="max-w-2xl mx-auto">
         <header class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-slate-900 mb-2">3D Print Price Calculator</h1>
-            <p class="text-emerald-700 font-medium">Asencio Designs | 2026 TECO Rates</p>
+            <h1 id="mainHeader" class="text-3xl font-bold text-slate-900 mb-2 transition-all">3D Print Price Calculator</h1>
+            <p id="subHeader" class="text-emerald-700 font-medium">Asencio Designs | 2026 TECO Rates</p>
         </header>
 
         <div class="flex gap-2 mb-6">
@@ -94,16 +94,24 @@
                 </label>
             </div>
 
-            <div id="slaMaintenance" class="hidden mb-8 p-4 bg-orange-50 border border-orange-100 rounded-xl">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-[10px] font-bold text-orange-600 mb-1">SCREEN COST ($)</label>
-                        <input type="number" id="screenCost" value="115" class="w-full p-2 text-sm border rounded bg-white border-orange-200">
+            <!-- SLA Maintenance and Custom Pricing -->
+            <div id="slaOptions" class="hidden mb-6 space-y-4">
+                <div class="p-4 bg-orange-50 border border-orange-100 rounded-xl">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-orange-600 mb-1">SCREEN COST ($)</label>
+                            <input type="number" id="screenCost" value="115" class="w-full p-2 text-sm border rounded bg-white border-orange-200">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-orange-600 mb-1">SCREEN LIFE (HRS)</label>
+                            <input type="number" id="screenLife" value="2000" class="w-full p-2 text-sm border rounded bg-white border-orange-200">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-orange-600 mb-1">SCREEN LIFE (HRS)</label>
-                        <input type="number" id="screenLife" value="2000" class="w-full p-2 text-sm border rounded bg-white border-orange-200">
-                    </div>
+                </div>
+                <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                    <label class="block text-sm font-bold text-blue-900 mb-2">Adjusted Price ($)</label>
+                    <input type="number" id="adjustedPrice" value="0" placeholder="e.g. Painting/Labor" class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
+                    <p class="text-[10px] text-blue-600 mt-2 font-medium uppercase tracking-wider">Added as flat fee for custom painting/labor</p>
                 </div>
             </div>
 
@@ -141,8 +149,8 @@
     <div id="receipt-view" class="max-w-md mx-auto py-10 px-4">
         <div class="card shadow-2xl rounded-3xl border border-emerald-100 relative overflow-hidden">
             <!-- Extended Green Banner -->
-            <div class="bg-emerald-600 text-white text-center py-8">
-                <h2 class="text-2xl font-black tracking-tight uppercase">Asencio Designs</h2>
+            <div id="receiptBanner" class="bg-emerald-600 text-white text-center py-8">
+                <h2 id="receiptBrand" class="text-2xl font-black tracking-tight uppercase">Asencio Designs</h2>
                 <p class="font-bold text-sm uppercase tracking-widest mt-1 opacity-90">3D Print Receipt</p>
             </div>
             
@@ -193,6 +201,10 @@
                             <span class="text-slate-500">Post-Process Fee</span>
                             <span class="font-bold text-slate-700">$2.00</span>
                         </div>
+                        <div id="r-adj-row" class="hidden flex justify-between text-sm">
+                            <span class="text-slate-500">Custom Painting / Labor</span>
+                            <span id="r-adj-cost" class="font-bold text-slate-700"></span>
+                        </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-slate-500">Process Fee</span>
                             <span id="r-process-fee" class="font-bold text-slate-700"></span>
@@ -211,7 +223,7 @@
                     </p>
                     <div class="pt-4 border-t border-slate-100">
                         <p class="text-sm font-bold text-slate-800 leading-snug">
-                            Thank you for choosing Asencio Designs<br>for your custom fabrication needs!
+                            Thank you for choosing <span id="r-final-brand">Asencio Designs</span><br>for your custom fabrication needs!
                         </p>
                     </div>
                 </div>
@@ -233,8 +245,25 @@
             document.getElementById('fdmToggle').className = mode === 'fdm' ? "flex-1 py-3 rounded-xl border-2 font-bold transition-all mode-active" : "flex-1 py-3 rounded-xl border-2 font-bold transition-all border-slate-200 bg-white hover:border-emerald-200";
             document.getElementById('slaToggle').className = mode === 'sla' ? "flex-1 py-3 rounded-xl border-2 font-bold transition-all mode-active" : "flex-1 py-3 rounded-xl border-2 font-bold transition-all border-slate-200 bg-white hover:border-emerald-200";
             document.getElementById('fdmOptions').classList.toggle('hidden', mode === 'sla');
-            document.getElementById('slaMaintenance').classList.toggle('hidden', mode === 'fdm');
-            document.getElementById('materialLabel').innerText = mode === 'fdm' ? "Filament Type" : "Printer Model";
+            document.getElementById('slaOptions').classList.toggle('hidden', mode === 'fdm');
+            
+            const mainHeader = document.getElementById('mainHeader');
+            const subHeader = document.getElementById('subHeader');
+            
+            if (mode === 'fdm') {
+                mainHeader.innerText = "3D Print Price Calculator";
+                subHeader.innerText = "Asencio Designs | 2026 TECO Rates";
+                document.getElementById('materialLabel').innerText = "Filament Type";
+                document.getElementById('containerCostLabel').innerText = "Cost of Spool ($)";
+                document.getElementById('containerSizeLabel').innerText = "Total Spool (kg)";
+            } else {
+                mainHeader.innerText = "Third Eyed Spaceking 3D";
+                subHeader.innerText = "SLA Cost Analysis | 2026 TECO Rates";
+                document.getElementById('materialLabel').innerText = "Printer Model";
+                document.getElementById('containerCostLabel').innerText = "Cost of Bottle ($)";
+                document.getElementById('containerSizeLabel').innerText = "Total Bottle (kg/L)";
+            }
+
             populateMaterials();
             calculate();
         }
@@ -280,16 +309,19 @@
 
             let extraCost = 0;
             let maintCost = 0;
+            let adjPrice = 0;
+
             if (currentMode === 'sla') {
                 maintCost = (parseFloat(document.getElementById('screenCost').value) / parseFloat(document.getElementById('screenLife').value)) * hours;
                 extraCost = 10.00;
+                adjPrice = parseFloat(document.getElementById('adjustedPrice').value) || 0;
             } else if (document.getElementById('postProcessing').checked) {
                 extraCost = 2.00;
             }
 
             const production = materialCost + electricityCost + maintCost + extraCost;
             const markup = (production - extraCost) * (markupPercent / 100);
-            const total = production + markup;
+            const total = production + markup + adjPrice;
 
             document.getElementById('salePrice').innerText = '$' + total.toFixed(2);
         }
@@ -313,10 +345,12 @@
             let extra = 0;
             let mn = 0;
             let hasPostProc = false;
+            let adjPrice = 0;
             
             if (currentMode === 'sla') {
                 mn = (parseFloat(document.getElementById('screenCost').value) / parseFloat(document.getElementById('screenLife').value)) * parseFloat(hours);
                 extra = 10;
+                adjPrice = parseFloat(document.getElementById('adjustedPrice').value) || 0;
             } else if (document.getElementById('postProcessing').checked) {
                 extra = 2;
                 hasPostProc = true;
@@ -329,7 +363,7 @@
                 m: currentMode.toUpperCase(), s: selection, g: grams + (currentMode === 'fdm' ? 'g' : 'ml'),
                 h: hours + 'hrs', p: salePrice, d: date, mt: '$' + matCost.toFixed(2), 
                 el: '$' + elecCost.toFixed(2), mk: '$' + mk.toFixed(2), mn: '$' + mn.toFixed(2), 
-                hz: currentMode === 'sla', pp: hasPostProc
+                hz: currentMode === 'sla', pp: hasPostProc, adj: adjPrice
             };
 
             const encoded = btoa(JSON.stringify(data));
@@ -358,6 +392,12 @@
                 try {
                     const data = JSON.parse(atob(rData));
                     document.body.classList.add('view-receipt');
+                    
+                    // CRITICAL: Ensure branding is correct based on the mode stored in the receipt data
+                    const brandName = (data.m === 'SLA') ? "Third Eyed Spaceking 3D" : "Asencio Designs";
+                    document.getElementById('receiptBrand').innerText = brandName;
+                    document.getElementById('r-final-brand').innerText = brandName;
+
                     document.getElementById('r-date').innerText = data.d;
                     document.getElementById('r-mode').innerText = data.m;
                     document.getElementById('r-selection').innerText = data.s;
@@ -373,6 +413,11 @@
                         document.getElementById('r-maint-row').classList.remove('hidden');
                         document.getElementById('r-hazmat-row').classList.remove('hidden');
                         document.getElementById('r-maint-cost').innerText = data.mn;
+                        
+                        if (data.adj > 0) {
+                            document.getElementById('r-adj-row').classList.remove('hidden');
+                            document.getElementById('r-adj-cost').innerText = '$' + data.adj.toFixed(2);
+                        }
                     }
                     if (data.pp) {
                         document.getElementById('r-postproc-row').classList.remove('hidden');
@@ -387,7 +432,7 @@
             setTimeout(() => toast.classList.add('hidden'), 2000);
         }
 
-        ['grams', 'spoolCost', 'spoolWeight', 'hours', 'wattage', 'markup', 'screenCost', 'screenLife', 'postProcessing'].forEach(id => {
+        ['grams', 'spoolCost', 'spoolWeight', 'hours', 'wattage', 'markup', 'screenCost', 'screenLife', 'postProcessing', 'adjustedPrice'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', calculate);
         });
